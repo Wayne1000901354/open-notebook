@@ -58,7 +58,7 @@ export async function getConfig(): Promise<AppConfig> {
  */
 async function fetchConfig(): Promise<AppConfig> {
   const isDev = process.env.NODE_ENV === 'development'
-  
+
   if (isDev) {
     console.log('🔧 [Config] Starting configuration detection...')
     console.log('🔧 [Config] Build time:', BUILD_TIME)
@@ -68,6 +68,7 @@ async function fetchConfig(): Promise<AppConfig> {
   // This allows API_URL to be set at runtime (not baked into build)
   // Note: Endpoint is at /config (not /api/config) to avoid reverse proxy conflicts
   let runtimeApiUrl: string | null = null
+  let runtimeBatchUploadLimit: number | undefined
   try {
     if (isDev) console.log('🔧 [Config] Attempting to fetch runtime config from /config endpoint...')
     const runtimeResponse = await fetch('/config', {
@@ -76,6 +77,7 @@ async function fetchConfig(): Promise<AppConfig> {
     if (runtimeResponse.ok) {
       const runtimeData = await runtimeResponse.json()
       runtimeApiUrl = runtimeData.apiUrl
+      runtimeBatchUploadLimit = runtimeData.batchUploadLimit
       // Treat empty string as "not set" to allow fallback to env var or default
       if (runtimeApiUrl === '') {
         runtimeApiUrl = null
@@ -97,7 +99,7 @@ async function fetchConfig(): Promise<AppConfig> {
   const defaultApiUrl = ''
 
   if (typeof window !== 'undefined' && isDev) {
-      console.log('🔧 [Config] Using relative path (rewrites) as default')
+    console.log('🔧 [Config] Using relative path (rewrites) as default')
   }
 
   // Priority: Runtime config > Build-time env var > Smart default
@@ -106,8 +108,8 @@ async function fetchConfig(): Promise<AppConfig> {
   if (isDev) {
     console.log('🔧 [Config] Final base URL to try:', baseUrl)
     console.log('🔧 [Config] Selection priority: runtime=' + (runtimeApiUrl ? '✅' : '❌') +
-                ', build-time=' + (envApiUrl ? '✅' : '❌') +
-                ', smart-default=' + (!runtimeApiUrl && !envApiUrl ? '✅' : '❌'))
+      ', build-time=' + (envApiUrl ? '✅' : '❌') +
+      ', smart-default=' + (!runtimeApiUrl && !envApiUrl ? '✅' : '❌'))
   }
 
   try {
@@ -126,6 +128,7 @@ async function fetchConfig(): Promise<AppConfig> {
         latestVersion: data.latestVersion || null,
         hasUpdate: data.hasUpdate || false,
         dbStatus: data.dbStatus, // Can be undefined for old backends
+        batchUploadLimit: runtimeBatchUploadLimit,
       }
       if (isDev) console.log('✅ [Config] Successfully loaded API config:', config)
       return config

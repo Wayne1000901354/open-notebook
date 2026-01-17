@@ -1,3 +1,4 @@
+import os
 from typing import Any, Dict, List, Optional
 
 from fastapi import APIRouter, HTTPException, Query
@@ -8,6 +9,9 @@ from surreal_commands import registry
 from api.command_service import CommandService
 
 router = APIRouter()
+
+# Get pagination limit from environment
+API_PAGINATION_LIMIT = int(os.getenv("API_PAGINATION_LIMIT", "100"))
 
 
 class CommandExecutionRequest(BaseModel):
@@ -89,7 +93,7 @@ async def get_command_job_status(job_id: str):
 async def list_command_jobs(
     command_filter: Optional[str] = Query(None, description="Filter by command name"),
     status_filter: Optional[str] = Query(None, description="Filter by status"),
-    limit: int = Query(50, description="Maximum number of jobs to return"),
+    limit: int = Query(50, le=API_PAGINATION_LIMIT, description=f"Maximum number of jobs to return (max {API_PAGINATION_LIMIT})"),
 ):
     """List command jobs with optional filtering"""
     try:

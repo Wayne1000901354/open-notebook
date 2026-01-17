@@ -1,6 +1,6 @@
 "use client"
 
-import { useMemo } from "react"
+import { useMemo, useEffect, useState } from "react"
 import { Control, FieldErrors, UseFormRegister, useWatch } from "react-hook-form"
 import { FileIcon, LinkIcon, FileTextIcon } from "lucide-react"
 import { useTranslation } from "@/lib/hooks/use-translation"
@@ -11,6 +11,7 @@ import { Textarea } from "@/components/ui/textarea"
 import { Label } from "@/components/ui/label"
 import { Badge } from "@/components/ui/badge"
 import { Controller } from "react-hook-form"
+import { getConfig } from "@/lib/config"
 
 interface CreateSourceFormData {
   type: 'link' | 'upload' | 'text'
@@ -94,7 +95,8 @@ interface SourceTypeStepProps {
   onClearUrlErrors?: () => void
 }
 
-const MAX_BATCH_SIZE = 50
+// Default value if configuration fails
+const DEFAULT_BATCH_SIZE = 50
 
 export function SourceTypeStep({ control, register, errors, urlValidationErrors, onClearUrlErrors }: SourceTypeStepProps) {
   const { t } = useTranslation()
@@ -102,6 +104,15 @@ export function SourceTypeStep({ control, register, errors, urlValidationErrors,
   const selectedType = useWatch({ control, name: 'type' })
   const urlInput = useWatch({ control, name: 'url' })
   const fileInput = useWatch({ control, name: 'file' })
+  const [maxBatchSize, setMaxBatchSize] = useState(DEFAULT_BATCH_SIZE)
+
+  useEffect(() => {
+    getConfig().then(config => {
+      if (config.batchUploadLimit) {
+        setMaxBatchSize(config.batchUploadLimit)
+      }
+    }).catch(console.error)
+  }, [])
 
   // Batch mode detection
   const { isBatchMode, itemCount, urlCount, fileCount } = useMemo(() => {
@@ -125,7 +136,7 @@ export function SourceTypeStep({ control, register, errors, urlValidationErrors,
   }, [selectedType, urlInput, fileInput])
 
   // Check for batch size limit
-  const isOverLimit = itemCount > MAX_BATCH_SIZE
+  const isOverLimit = itemCount > maxBatchSize
   return (
     <div className="space-y-6">
       <FormSection
@@ -136,8 +147,8 @@ export function SourceTypeStep({ control, register, errors, urlValidationErrors,
           control={control}
           name="type"
           render={({ field }) => (
-            <Tabs 
-              value={field.value || ''} 
+            <Tabs
+              value={field.value || ''}
               onValueChange={(value) => field.onChange(value as 'link' | 'upload' | 'text')}
               className="w-full"
             >
@@ -152,11 +163,11 @@ export function SourceTypeStep({ control, register, errors, urlValidationErrors,
                   )
                 })}
               </TabsList>
-              
+
               {getSourceTypes(t).map((type) => (
                 <TabsContent key={type.value} value={type.value} className="mt-4">
                   <p className="text-sm text-muted-foreground mb-4">{type.description}</p>
-                  
+
                   {/* Type-specific fields */}
                   {type.value === 'link' && (
                     <div>
@@ -164,8 +175,8 @@ export function SourceTypeStep({ control, register, errors, urlValidationErrors,
                         <Label htmlFor="url">{t.sources.urlLabel}</Label>
                         {urlCount > 0 && (
                           <Badge variant={isOverLimit ? "destructive" : "secondary"}>
-                            {t.sources.urlsCount.replace('{count}', urlCount.toString())}
-                            {isOverLimit && ` (${t.sources.maxItems.replace('{count}', MAX_BATCH_SIZE.toString())})`}
+                            {urlCount} {t.sources.urlsSuffix || 'URLs'}
+                            {isOverLimit && ` (max ${maxBatchSize})`}
                           </Badge>
                         )}
                       </div>
@@ -206,15 +217,15 @@ export function SourceTypeStep({ control, register, errors, urlValidationErrors,
                       )}
                     </div>
                   )}
-                  
+
                   {type.value === 'upload' && (
                     <div>
                       <div className="flex items-center justify-between mb-2">
                         <Label htmlFor="file">{t.sources.fileLabel}</Label>
                         {fileCount > 0 && (
                           <Badge variant={isOverLimit ? "destructive" : "secondary"}>
-                            {t.sources.filesCount.replace('{count}', fileCount.toString())}
-                            {isOverLimit && ` (${t.sources.maxItems.replace('{count}', MAX_BATCH_SIZE.toString())})`}
+                            {fileCount} {t.sources.filesSuffix || 'file'}{fileCount !== 1 && !t.sources.filesSuffix ? 's' : ''}
+                            {isOverLimit && ` (max ${maxBatchSize})`}
                           </Badge>
                         )}
                       </div>
@@ -249,12 +260,12 @@ export function SourceTypeStep({ control, register, errors, urlValidationErrors,
                       )}
                       {isOverLimit && selectedType === 'upload' && (
                         <p className="text-sm text-destructive mt-1">
-                          {t.sources.maxFilesAllowed.replace('{count}', MAX_BATCH_SIZE.toString())}
+                          {t.sources.maxFilesAllowed.replace('{count}', String(maxBatchSize))}
                         </p>
                       )}
                     </div>
                   )}
-                  
+
                   {type.value === 'text' && (
                     <div>
                       <Label htmlFor="content" className="mb-2 block">{t.sources.textContentLabel}</Label>

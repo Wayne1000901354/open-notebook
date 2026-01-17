@@ -13,7 +13,11 @@ from fastapi import (
 )
 from fastapi.responses import FileResponse, Response
 from loguru import logger
+from loguru import logger
 from surreal_commands import execute_command_sync
+
+# Get pagination limit from environment
+API_PAGINATION_LIMIT = int(os.getenv("API_PAGINATION_LIMIT", "100"))
 
 from api.command_service import CommandService
 from api.models import (
@@ -150,9 +154,7 @@ def parse_source_form_data(
 @router.get("/sources", response_model=List[SourceListResponse])
 async def get_sources(
     notebook_id: Optional[str] = Query(None, description="Filter by notebook ID"),
-    limit: int = Query(
-        50, ge=1, le=100, description="Number of sources to return (1-100)"
-    ),
+    limit: int = Query(50, ge=1, le=API_PAGINATION_LIMIT, description=f"Number of sources to return (1-{API_PAGINATION_LIMIT})"),
     offset: int = Query(0, ge=0, description="Number of sources to skip"),
     sort_by: str = Query(
         "updated", description="Field to sort by (created or updated)"
