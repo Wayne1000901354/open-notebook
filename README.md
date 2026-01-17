@@ -113,6 +113,8 @@ Choose your installation method:
 - Run: docker compose up -d
 - Access: http://localhost:8502
 
+→ **[Advanced: GHCR / NAS Deployment Guide](GHCR_SETUP.md)** - For using our pre-built images or private repos on NAS
+
 ---
 
 ### 💻 **From Source (Developers)**
